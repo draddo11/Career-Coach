@@ -34,6 +34,10 @@ const InterviewPrep: React.FC = () => {
     const [isLoadingReport, setIsLoadingReport] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied' | 'checking'>('checking');
+    
+    // Add state for live transcription display
+    const [currentInputTranscription, setCurrentInputTranscription] = useState('');
+    const [currentOutputTranscription, setCurrentOutputTranscription] = useState('');
 
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -50,7 +54,7 @@ const InterviewPrep: React.FC = () => {
 
     useEffect(() => {
         transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [transcript]);
+    }, [transcript, currentInputTranscription, currentOutputTranscription]);
 
     useEffect(() => {
         const checkMicPermission = async () => {
@@ -103,9 +107,23 @@ const InterviewPrep: React.FC = () => {
         audioSourcesRef.current.clear();
         nextStartTimeRef.current = 0;
 
-        if (transcript.length > 0) {
+        // --- Robust Report Generation ---
+        const finalTranscriptMessages = [...transcript];
+        if (currentInputTranscriptionRef.current.trim()) {
+            finalTranscriptMessages.push({ speaker: 'user', text: currentInputTranscriptionRef.current.trim() });
+        }
+        if (currentOutputTranscriptionRef.current.trim()) {
+            finalTranscriptMessages.push({ speaker: 'model', text: currentOutputTranscriptionRef.current.trim() });
+        }
+        // Clear refs and state
+        currentInputTranscriptionRef.current = '';
+        currentOutputTranscriptionRef.current = '';
+        setCurrentInputTranscription('');
+        setCurrentOutputTranscription('');
+
+        if (finalTranscriptMessages.length > 0) {
             setIsLoadingReport(true);
-            const fullTranscript = transcript.map(t => `${t.speaker}: ${t.text}`).join('\n');
+            const fullTranscript = finalTranscriptMessages.map(t => `${t.speaker}: ${t.text}`).join('\n');
             try {
                 const report = await generateInterviewReport(fullTranscript);
                 setFinalReport(report);
@@ -132,7 +150,20 @@ const InterviewPrep: React.FC = () => {
             mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
 
             inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+            
+            // --- ROBUST AUDIO UNLOCKING ---
             outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+            const outCtx = outputAudioContextRef.current;
+            if (outCtx.state === 'suspended') {
+                await outCtx.resume();
+            }
+            // Play a silent buffer to ensure the audio context is fully unlocked and ready.
+            const buffer = outCtx.createBuffer(1, 1, 22050);
+            const sourceNode = outCtx.createBufferSource();
+            sourceNode.buffer = buffer;
+            sourceNode.connect(outCtx.destination);
+            sourceNode.start(0);
+            // --- END ROBUST AUDIO UNLOCKING ---
 
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -144,10 +175,11 @@ const InterviewPrep: React.FC = () => {
                 },
                 callbacks: {
                     onopen: () => {
-                        const source = inputAudioContextRef.current!.createMediaStreamSource(mediaStreamRef.current!);
+                        const inputCtx = inputAudioContextRef.current!;
+                        const source = inputCtx.createMediaStreamSource(mediaStreamRef.current!);
                         mediaStreamSourceRef.current = source;
                         
-                        const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
+                        const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
                         scriptProcessorRef.current = scriptProcessor;
 
                         scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
@@ -158,8 +190,10 @@ const InterviewPrep: React.FC = () => {
                             });
                         };
                         source.connect(scriptProcessor);
-                        // The line below was causing an audio feedback loop and has been removed.
-                        // scriptProcessor.connect(inputAudioContextRef.current!.destination);
+                        // This connection is CRITICAL. The script processor must be connected to a destination
+                        // for the 'onaudioprocess' event to fire. Because we do not write to the output
+                        // buffer in the event handler, this connection is silent and does not cause an echo.
+                        scriptProcessor.connect(inputCtx.destination);
                     },
                     onmessage: async (message: LiveServerMessage) => {
                         handleServerMessage(message);
@@ -188,9 +222,11 @@ const InterviewPrep: React.FC = () => {
     const handleServerMessage = async (message: LiveServerMessage) => {
         if (message.serverContent?.inputTranscription) {
             currentInputTranscriptionRef.current += message.serverContent.inputTranscription.text;
+            setCurrentInputTranscription(currentInputTranscriptionRef.current);
         }
         if (message.serverContent?.outputTranscription) {
             currentOutputTranscriptionRef.current += message.serverContent.outputTranscription.text;
+            setCurrentOutputTranscription(currentOutputTranscriptionRef.current);
         }
         
         if (message.serverContent?.turnComplete) {
@@ -206,6 +242,8 @@ const InterviewPrep: React.FC = () => {
             });
             currentInputTranscriptionRef.current = '';
             currentOutputTranscriptionRef.current = '';
+            setCurrentInputTranscription('');
+            setCurrentOutputTranscription('');
         }
 
         const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
@@ -266,7 +304,7 @@ const InterviewPrep: React.FC = () => {
                 {error && <p className="mt-4 text-red-400 text-center">{error}</p>}
             </Card>
 
-            {(isInterviewing || transcript.length > 0) && (
+            {(isInterviewing || transcript.length > 0 || isLoadingReport || finalReport) && (
                 <Card>
                     <h3 className="text-xl font-bold mb-4">Interview Transcript</h3>
                     <div className="space-y-4 max-h-96 overflow-y-auto p-4 bg-[#1F1F1F] rounded-2xl border border-white/10">
@@ -278,11 +316,36 @@ const InterviewPrep: React.FC = () => {
                                 </div>
                             </div>
                         ))}
-                         {isInterviewing && <div className="text-center text-slate-400 animate-pulse font-medium">Listening...</div>}
-                         <div ref={transcriptEndRef} />
+                        
+                        {/* Live Transcription Bubbles for immediate feedback */}
+                        {currentInputTranscription && (
+                            <div className="flex flex-col gap-1 items-end">
+                                <p className="text-xs font-bold capitalize px-2 text-[#A8C7FA]">You</p>
+                                <div className="max-w-xl px-4 py-2.5 bg-[#A8C7FA] text-[#1F1F1F] rounded-t-2xl rounded-bl-2xl opacity-70">
+                                    <p className="leading-relaxed animate-pulse">{currentInputTranscription}</p>
+                                </div>
+                            </div>
+                        )}
+                        {currentOutputTranscription && (
+                            <div className="flex flex-col gap-1 items-start">
+                                <p className="text-xs font-bold capitalize px-2 text-green-300">Interviewer</p>
+                                <div className="max-w-xl px-4 py-2.5 bg-[#3C3C3C] text-slate-200 rounded-t-2xl rounded-br-2xl opacity-70">
+                                    <p className="leading-relaxed animate-pulse">{currentOutputTranscription}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Status Indicator */}
+                        {isInterviewing && !currentInputTranscription && !currentOutputTranscription && (
+                            <div className="text-center text-slate-400 animate-pulse font-medium">
+                                {transcript.length === 0 ? 'AI is preparing the first question...' : 'Listening...'}
+                            </div>
+                        )}
+                        <div ref={transcriptEndRef} />
                     </div>
                 </Card>
             )}
+
 
             {isLoadingReport && <Loader message="Generating your performance report..." />}
             
