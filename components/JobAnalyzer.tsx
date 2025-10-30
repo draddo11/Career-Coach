@@ -4,6 +4,7 @@ import { analyzeJobMatch } from '../services/geminiService';
 import Card from './common/Card';
 import Loader from './common/Loader';
 import { Document, Packer, Paragraph, HeadingLevel } from 'docx';
+import ResumeInput from './common/ResumeInput';
 
 // A simple component to render markdown-like bullet points
 const MarkdownRenderer = ({ content }: { content: string }) => {
@@ -89,25 +90,26 @@ const JobAnalyzer: React.FC = () => {
       <Card>
         <h2 className="text-2xl font-bold mb-2 text-slate-100">Job Description Analyzer</h2>
         <p className="text-slate-400 mb-6">Get an edge in your job search. This tool analyzes your resume against a job description to give you a match score, actionable feedback, and a tailored cover letter.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <textarea
-            value={resumeText}
-            onChange={(e) => setResumeText(e.target.value)}
-            placeholder="Paste your resume text here..."
-            className="w-full h-48 p-4 bg-[#1F1F1F] border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all resize-none"
-            rows={10}
-          />
-          <textarea
-            value={jdText}
-            onChange={(e) => setJdText(e.target.value)}
-            placeholder="Paste the job description text here..."
-            className="w-full h-48 p-4 bg-[#1F1F1F] border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all resize-none"
-            rows={10}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          <div className="flex flex-col gap-2">
+            <h3 className="text-lg font-semibold text-slate-300 text-center">Your Resume</h3>
+            <ResumeInput value={resumeText} onChange={setResumeText} disabled={isLoading} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-lg font-semibold text-slate-300 text-center">Job Description</h3>
+            <textarea
+              value={jdText}
+              onChange={(e) => setJdText(e.target.value)}
+              placeholder="Paste the job description text here..."
+              className="w-full flex-grow p-4 bg-[#1F1F1F] border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all resize-none"
+              rows={10}
+              disabled={isLoading}
+            />
+          </div>
         </div>
         <button
           onClick={handleAnalyze}
-          disabled={isLoading}
+          disabled={isLoading || !resumeText.trim() || !jdText.trim()}
           className="mt-6 w-full bg-[#A8C7FA] text-[#1F1F1F] font-bold py-3 px-4 rounded-full hover:bg-opacity-90 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all duration-200"
         >
           {isLoading ? 'Analyzing with Thinking Mode...' : 'Analyze Match'}

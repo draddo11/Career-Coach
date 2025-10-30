@@ -1,4 +1,5 @@
 
+
 export interface AlternateJob {
   jobTitle: string;
   skillMatchPercentage: number;
@@ -11,10 +12,28 @@ export interface AnalysisResult {
   coverLetter: string;
 }
 
+export interface AnswerBreakdown {
+  question: string;
+  userAnswer: string;
+  situationFeedback: string;
+  taskFeedback: string;
+  actionFeedback: string;
+  resultFeedback: string;
+}
+
+export interface SuggestedImprovement {
+  originalAnswer: string;
+  improvedAnswer: string;
+  reasoning: string;
+}
+
 export interface InterviewFeedback {
   finalScore: number;
-  feedback: string; // Markdown string
+  overallFeedback: string; // Markdown string
+  answerBreakdowns: AnswerBreakdown[];
+  suggestedImprovements: SuggestedImprovement[];
 }
+
 
 export interface TranscriptMessage {
   speaker: 'user' | 'model';

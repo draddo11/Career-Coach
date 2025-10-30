@@ -4,16 +4,12 @@ import { generateInterviewReport } from '../services/geminiService';
 import Card from './common/Card';
 import Loader from './common/Loader';
 import { createPcmBlob, decode, decodeAudioData } from '../utils/audioUtils';
-import { MicrophoneIcon, StopIcon } from './common/Icons';
-import type { InterviewFeedback, TranscriptMessage } from '../types';
+import { MicrophoneIcon, StopIcon, SettingsIcon } from './common/Icons';
+import type { InterviewFeedback, TranscriptMessage, AnswerBreakdown, SuggestedImprovement } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
+type InterviewStyle = 'friendly' | 'formal' | 'stress';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-// Simple component to render markdown-like bullet points
+// A simple component to render markdown-like bullet points
 const MarkdownRenderer = ({ content }: { content: string }) => {
     const lines = content.split('\n').filter(line => line.trim() !== '');
     return (
@@ -26,6 +22,7 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
     );
 };
 
+
 const InterviewPrep: React.FC = () => {
     const [jdText, setJdText] = useState('');
     const [isInterviewing, setIsInterviewing] = useState(false);
@@ -35,7 +32,10 @@ const InterviewPrep: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied' | 'checking'>('checking');
     
-    // Add state for live transcription display
+    // New states for customization
+    const [interviewStyle, setInterviewStyle] = useState<InterviewStyle>('friendly');
+    const [skillsToPractice, setSkillsToPractice] = useState('');
+
     const [currentInputTranscription, setCurrentInputTranscription] = useState('');
     const [currentOutputTranscription, setCurrentOutputTranscription] = useState('');
 
@@ -107,7 +107,6 @@ const InterviewPrep: React.FC = () => {
         audioSourcesRef.current.clear();
         nextStartTimeRef.current = 0;
 
-        // --- Robust Report Generation ---
         const finalTranscriptMessages = [...transcript];
         if (currentInputTranscriptionRef.current.trim()) {
             finalTranscriptMessages.push({ speaker: 'user', text: currentInputTranscriptionRef.current.trim() });
@@ -115,7 +114,6 @@ const InterviewPrep: React.FC = () => {
         if (currentOutputTranscriptionRef.current.trim()) {
             finalTranscriptMessages.push({ speaker: 'model', text: currentOutputTranscriptionRef.current.trim() });
         }
-        // Clear refs and state
         currentInputTranscriptionRef.current = '';
         currentOutputTranscriptionRef.current = '';
         setCurrentInputTranscription('');
@@ -141,37 +139,62 @@ const InterviewPrep: React.FC = () => {
             setError('Please provide a job description for the mock interview.');
             return;
         }
+        if (!process.env.API_KEY) {
+            setError('API Key is not configured. The interview feature is unavailable.');
+            return;
+        }
         setError(null);
         setTranscript([]);
         setFinalReport(null);
         setIsInterviewing(true);
+
+        // --- Dynamic System Instruction ---
+        let systemInstruction = `You are an interviewer conducting a mock interview for the role described below. Ask relevant behavioral and technical questions. Keep your responses concise. Start by introducing yourself and asking the candidate to tell you about themselves.`;
+        
+        switch (interviewStyle) {
+            case 'formal':
+                systemInstruction += `\nMaintain a formal, professional, and corporate tone throughout the interview.`;
+                break;
+            case 'stress':
+                systemInstruction += `\nAdopt a "stress interview" style. Be challenging, ask probing follow-up questions, and maintain a skeptical tone to test the candidate's resilience.`;
+                break;
+            case 'friendly':
+            default:
+                systemInstruction += `\nAdopt a friendly, encouraging, and conversational tone.`;
+                break;
+        }
+
+        if (skillsToPractice.trim()) {
+            systemInstruction += `\nPay special attention to asking questions that target these skills: ${skillsToPractice.trim()}.`;
+        }
+        
+        systemInstruction += `\n\nJOB DESCRIPTION:\n${jdText}`;
+        // --- End Dynamic System Instruction ---
 
         try {
             mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
 
             inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
             
-            // --- ROBUST AUDIO UNLOCKING ---
             outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
             const outCtx = outputAudioContextRef.current;
             if (outCtx.state === 'suspended') {
                 await outCtx.resume();
             }
-            // Play a silent buffer to ensure the audio context is fully unlocked and ready.
-            const buffer = outCtx.createBuffer(1, 1, 22050);
+            const buffer = outCtx.createBuffer(1, 1, 24000);
             const sourceNode = outCtx.createBufferSource();
             sourceNode.buffer = buffer;
             sourceNode.connect(outCtx.destination);
             sourceNode.start(0);
-            // --- END ROBUST AUDIO UNLOCKING ---
 
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 config: {
                     responseModalities: [Modality.AUDIO],
                     inputAudioTranscription: {},
                     outputAudioTranscription: {},
-                    systemInstruction: `You are a friendly but professional interviewer conducting a mock interview for the role described below. Ask relevant behavioral and technical questions. Keep your responses concise. Start by introducing yourself and asking the candidate to tell you about themselves. \n\nJOB DESCRIPTION:\n${jdText}`,
+                    systemInstruction: systemInstruction,
                 },
                 callbacks: {
                     onopen: () => {
@@ -190,9 +213,6 @@ const InterviewPrep: React.FC = () => {
                             });
                         };
                         source.connect(scriptProcessor);
-                        // This connection is CRITICAL. The script processor must be connected to a destination
-                        // for the 'onaudioprocess' event to fire. Because we do not write to the output
-                        // buffer in the event handler, this connection is silent and does not cause an echo.
                         scriptProcessor.connect(inputCtx.destination);
                     },
                     onmessage: async (message: LiveServerMessage) => {
@@ -268,7 +288,7 @@ const InterviewPrep: React.FC = () => {
                 <h2 className="text-2xl font-bold mb-2 text-slate-100">AI Interview Prep</h2>
                 <p className="text-slate-400 mb-6">Practice your interview skills with an AI interviewer tailored to a specific job. Speak naturally and get a full performance report afterward.</p>
                 {!isInterviewing && (
-                    <>
+                    <div className="space-y-4">
                         <textarea
                             value={jdText}
                             onChange={(e) => setJdText(e.target.value)}
@@ -276,6 +296,36 @@ const InterviewPrep: React.FC = () => {
                             className="w-full h-32 p-4 bg-[#1F1F1F] border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all resize-none"
                             rows={6}
                         />
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                            <h3 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2"><SettingsIcon/> Interview Customization</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="interview-style" className="block text-sm font-medium text-slate-400 mb-1">Interviewer Persona</label>
+                                    <select
+                                        id="interview-style"
+                                        value={interviewStyle}
+                                        onChange={(e) => setInterviewStyle(e.target.value as InterviewStyle)}
+                                        className="w-full p-2 bg-[#1F1F1F] border border-white/10 rounded-lg focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none"
+                                    >
+                                        <option value="friendly">Friendly & Encouraging</option>
+                                        <option value="formal">Formal & Corporate</option>
+                                        <option value="stress">Stress Interview</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="skills-practice" className="block text-sm font-medium text-slate-400 mb-1">Skills to Practice</label>
+                                    <input
+                                        type="text"
+                                        id="skills-practice"
+                                        value={skillsToPractice}
+                                        onChange={(e) => setSkillsToPractice(e.target.value)}
+                                        placeholder="e.g., leadership, python, conflict resolution"
+                                        className="w-full p-2 bg-[#1F1F1F] border border-white/10 rounded-lg focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                          {micPermission === 'denied' ? (
                             <div className="mt-4 p-4 bg-red-900/50 border border-red-500 rounded-xl text-center">
                                 <p className="font-bold text-red-300">Microphone Access Denied</p>
@@ -285,13 +335,13 @@ const InterviewPrep: React.FC = () => {
                             <button
                                 onClick={startInterview}
                                 disabled={!jdText.trim() || micPermission === 'checking'}
-                                className="mt-4 w-full flex items-center justify-center gap-3 bg-green-500 text-white font-bold py-3 px-4 rounded-full hover:bg-green-600 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all"
+                                className="!mt-6 w-full flex items-center justify-center gap-3 bg-green-500 text-white font-bold py-3 px-4 rounded-full hover:bg-green-600 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all"
                             >
                                 <MicrophoneIcon /> 
                                 {micPermission === 'checking' ? 'Checking Mic...' : 'Start Mock Interview'}
                             </button>
                         )}
-                    </>
+                    </div>
                 )}
                 {isInterviewing && (
                     <button
@@ -317,7 +367,6 @@ const InterviewPrep: React.FC = () => {
                             </div>
                         ))}
                         
-                        {/* Live Transcription Bubbles for immediate feedback */}
                         {currentInputTranscription && (
                             <div className="flex flex-col gap-1 items-end">
                                 <p className="text-xs font-bold capitalize px-2 text-[#A8C7FA]">You</p>
@@ -335,7 +384,6 @@ const InterviewPrep: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Status Indicator */}
                         {isInterviewing && !currentInputTranscription && !currentOutputTranscription && (
                             <div className="text-center text-slate-400 animate-pulse font-medium">
                                 {transcript.length === 0 ? 'AI is preparing the first question...' : 'Listening...'}
@@ -356,11 +404,57 @@ const InterviewPrep: React.FC = () => {
                         <p className="text-lg text-slate-400 font-medium">Final Score</p>
                         <p className="text-7xl font-black text-green-400">{finalReport.finalScore}<span className="text-3xl font-bold text-green-400/80">/100</span></p>
                     </div>
-                    <div>
-                        <h4 className="text-lg font-bold text-[#A8C7FA] mb-3">Feedback</h4>
-                        <div className="bg-[#2D2D2D]/60 p-4 rounded-2xl border border-white/10">
-                           <MarkdownRenderer content={finalReport.feedback} />
+                    <div className="space-y-8">
+                        <div>
+                            <h4 className="text-lg font-bold text-[#A8C7FA] mb-3">Overall Feedback</h4>
+                            <div className="bg-[#2D2D2D]/60 p-4 rounded-2xl border border-white/10">
+                               <MarkdownRenderer content={finalReport.overallFeedback} />
+                            </div>
                         </div>
+
+                        {finalReport.answerBreakdowns?.length > 0 && (
+                            <div>
+                                <h4 className="text-lg font-bold text-[#A8C7FA] mb-3">STAR Method Analysis</h4>
+                                <div className="space-y-4">
+                                    {finalReport.answerBreakdowns.map((breakdown, idx) => (
+                                        <div key={idx} className="bg-[#2D2D2D]/60 p-4 rounded-2xl border border-white/10">
+                                            <p className="text-slate-400 text-sm italic mb-2">Interviewer: "{breakdown.question}"</p>
+                                            <p className="bg-slate-800/50 p-3 rounded-lg text-slate-300 mb-4">Your Answer: "{breakdown.userAnswer}"</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                                <div className="bg-[#1F1F1F] p-3 rounded-lg"><strong className="text-blue-300 block">Situation:</strong> {breakdown.situationFeedback}</div>
+                                                <div className="bg-[#1F1F1F] p-3 rounded-lg"><strong className="text-purple-300 block">Task:</strong> {breakdown.taskFeedback}</div>
+                                                <div className="bg-[#1F1F1F] p-3 rounded-lg"><strong className="text-green-300 block">Action:</strong> {breakdown.actionFeedback}</div>
+                                                <div className="bg-[#1F1F1F] p-3 rounded-lg"><strong className="text-yellow-300 block">Result:</strong> {breakdown.resultFeedback}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {finalReport.suggestedImprovements?.length > 0 && (
+                             <div>
+                                <h4 className="text-lg font-bold text-[#A8C7FA] mb-3">Suggested Improvements</h4>
+                                <div className="space-y-4">
+                                     {finalReport.suggestedImprovements.map((imp, idx) => (
+                                         <div key={idx} className="bg-[#2D2D2D]/60 p-4 rounded-2xl border border-white/10">
+                                            <p className="text-slate-200 font-semibold mb-2">Reasoning: <span className="font-normal text-slate-300">{imp.reasoning}</span></p>
+                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="border border-red-500/30 bg-red-900/20 p-3 rounded-lg">
+                                                    <p className="text-red-300 font-bold mb-2">Original Answer</p>
+                                                    <p className="text-slate-300 text-sm italic">"{imp.originalAnswer}"</p>
+                                                </div>
+                                                <div className="border border-green-500/30 bg-green-900/20 p-3 rounded-lg">
+                                                    <p className="text-green-300 font-bold mb-2">Improved Answer</p>
+                                                    <p className="text-slate-200 text-sm">"{imp.improvedAnswer}"</p>
+                                                </div>
+                                             </div>
+                                         </div>
+                                     ))}
+                                 </div>
+                             </div>
+                        )}
+
                     </div>
                 </Card>
             )}

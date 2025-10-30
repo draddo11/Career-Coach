@@ -1,17 +1,19 @@
-
 import { GoogleGenAI, Type } from '@google/genai';
 import type { AlternateJob, AnalysisResult, InterviewFeedback } from '../types';
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAiClient = () => {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY environment variable not set");
+  }
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+};
 
 export const analyzeResumeForCareerPaths = async (resumeText: string): Promise<AlternateJob[]> => {
+  const ai = getAiClient();
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Based on the following resume, suggest 5-10 alternative job titles. For each, provide a skill match percentage and for the top 3, a brief 'path summary' explaining what skills are missing or need to be developed.\n\nResume:\n${resumeText}`,
+      contents: `Based on the following resume, suggest 12 alternative job titles. For each, provide a skill match percentage and a brief 'path summary' explaining what skills are missing or need to be developed.\n\nResume:\n${resumeText}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -23,7 +25,7 @@ export const analyzeResumeForCareerPaths = async (resumeText: string): Promise<A
               skillMatchPercentage: { type: Type.NUMBER },
               pathSummary: { type: Type.STRING },
             },
-            required: ["jobTitle", "skillMatchPercentage"],
+            required: ["jobTitle", "skillMatchPercentage", "pathSummary"],
           },
         },
       },
@@ -38,6 +40,7 @@ export const analyzeResumeForCareerPaths = async (resumeText: string): Promise<A
 };
 
 export const analyzeJobMatch = async (resumeText: string, jdText: string): Promise<AnalysisResult> => {
+  const ai = getAiClient();
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-pro",
@@ -67,10 +70,15 @@ export const analyzeJobMatch = async (resumeText: string, jdText: string): Promi
 };
 
 export const generateInterviewReport = async (transcript: string): Promise<InterviewFeedback> => {
+    const ai = getAiClient();
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-pro",
-            contents: `Analyze the following mock interview transcript. Provide a final performance score from 0 to 100. Also, give structured feedback as a markdown string on the user's answers, covering content relevance, use of the STAR method, and clarity.
+            contents: `Analyze the following mock interview transcript. The user's responses are prefixed with "user:".
+            1.  Provide a final performance score from 0 to 100.
+            2.  Write overall feedback as a markdown string, summarizing strengths and key areas for improvement.
+            3.  For each of the user's significant behavioral answers (at least 2, max 4), provide a granular STAR method breakdown. Critique each component (Situation, Task, Action, Result).
+            4.  Identify 1 or 2 of the user's weakest answers. For each, provide the original answer, a rewritten "improved" answer, and a brief reasoning for the changes.
             \n\n---INTERVIEW TRANSCRIPT---\n${transcript}`,
             config: {
                 responseMimeType: "application/json",
@@ -78,9 +86,36 @@ export const generateInterviewReport = async (transcript: string): Promise<Inter
                     type: Type.OBJECT,
                     properties: {
                         finalScore: { type: Type.NUMBER },
-                        feedback: { type: Type.STRING, description: "Markdown formatted string" },
+                        overallFeedback: { type: Type.STRING, description: "Markdown formatted summary" },
+                        answerBreakdowns: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    question: { type: Type.STRING },
+                                    userAnswer: { type: Type.STRING },
+                                    situationFeedback: { type: Type.STRING },
+                                    taskFeedback: { type: Type.STRING },
+                                    actionFeedback: { type: Type.STRING },
+                                    resultFeedback: { type: Type.STRING },
+                                },
+                                required: ["question", "userAnswer", "situationFeedback", "taskFeedback", "actionFeedback", "resultFeedback"],
+                            },
+                        },
+                        suggestedImprovements: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    originalAnswer: { type: Type.STRING },
+                                    improvedAnswer: { type: Type.STRING },
+                                    reasoning: { type: Type.STRING },
+                                },
+                                required: ["originalAnswer", "improvedAnswer", "reasoning"],
+                            },
+                        },
                     },
-                    required: ["finalScore", "feedback"],
+                    required: ["finalScore", "overallFeedback", "answerBreakdowns", "suggestedImprovements"],
                 },
             },
         });

@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+    <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
   <script type="importmap">
 {
   "imports": {
@@ -31,6 +32,18 @@
 </head>
   <body>
     <div id="root"></div>
+    <script type="module">
+      import('https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.min.mjs')
+        .then(pdfjsLib => {
+          if (pdfjsLib) {
+            window.pdfjsLib = pdfjsLib;
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+          }
+        })
+        .catch(e => {
+          console.error("Failed to load PDF.js library", e);
+        });
+    </script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
