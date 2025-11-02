@@ -65,7 +65,7 @@ const ResumeInput: React.FC<ResumeInputProps> = ({ value, onChange, disabled }) 
     return (
         <div className="flex flex-col gap-4 h-full">
             <div 
-                className={`relative border-2 border-dashed border-white/20 rounded-xl p-6 text-center transition-all duration-300 bg-[#1F1F1F] ${isDragging ? 'border-white/40 bg-white/5' : ''}`}
+                className={`relative border-2 border-dashed border-white/20 rounded-xl p-6 text-center transition-all duration-300 bg-[#2D2D2D]/40 ${isDragging ? 'border-white/40 bg-white/10' : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -98,7 +98,7 @@ const ResumeInput: React.FC<ResumeInputProps> = ({ value, onChange, disabled }) 
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="... or paste your resume text here. Uploading a file will populate this area."
-                className="w-full flex-grow p-4 bg-[#1F1F1F] border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all duration-200 resize-none"
+                className="w-full flex-grow p-4 bg-[#2D2D2D]/60 border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all duration-200 resize-none"
                 rows={10}
                 disabled={disabled}
             />

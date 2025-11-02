@@ -5,20 +5,8 @@ import Card from './common/Card';
 import Loader from './common/Loader';
 import { Document, Packer, Paragraph, HeadingLevel } from 'docx';
 import ResumeInput from './common/ResumeInput';
-
-// A simple component to render markdown-like bullet points
-const MarkdownRenderer = ({ content }: { content: string }) => {
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    return (
-        <ul className="list-disc list-inside space-y-2 text-slate-300 pl-2">
-            {lines.map((line, index) => {
-                const text = line.replace(/^\s*[-*]\s*/, '');
-                return <li key={index} className="leading-relaxed">{text}</li>;
-            })}
-        </ul>
-    );
-};
-
+import MarkdownRenderer from './common/MarkdownRenderer';
+import JdInput from './common/JdInput';
 
 const JobAnalyzer: React.FC = () => {
   const [resumeText, setResumeText] = useState('');
@@ -97,14 +85,7 @@ const JobAnalyzer: React.FC = () => {
           </div>
           <div className="flex flex-col gap-2">
             <h3 className="text-lg font-semibold text-slate-300 text-center">Job Description</h3>
-            <textarea
-              value={jdText}
-              onChange={(e) => setJdText(e.target.value)}
-              placeholder="Paste the job description text here..."
-              className="w-full flex-grow p-4 bg-[#1F1F1F] border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all resize-none"
-              rows={10}
-              disabled={isLoading}
-            />
+            <JdInput value={jdText} onChange={setJdText} disabled={isLoading} />
           </div>
         </div>
         <button

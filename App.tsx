@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import CareerExplorer from './components/CareerExplorer';
 import JobAnalyzer from './components/JobAnalyzer';
 import InterviewPrep from './components/InterviewPrep';
-import { BriefcaseIcon, ChatBubbleIcon, TelescopeIcon } from './components/common/Icons';
+import SalaryStrategist from './components/SalaryStrategist';
+import ResumeStudio from './components/ResumeStudio';
+import { BriefcaseIcon, ChatBubbleIcon, TelescopeIcon, DollarIcon, DocumentIcon } from './components/common/Icons';
 
-type Feature = 'explorer' | 'analyzer' | 'interview';
+type Feature = 'explorer' | 'analyzer' | 'interview' | 'strategist' | 'studio';
 
 const App: React.FC = () => {
   const [activeFeature, setActiveFeature] = useState<Feature>('explorer');
@@ -17,6 +19,10 @@ const App: React.FC = () => {
         return <JobAnalyzer />;
       case 'interview':
         return <InterviewPrep />;
+      case 'strategist':
+        return <SalaryStrategist />;
+      case 'studio':
+        return <ResumeStudio />;
       default:
         return <CareerExplorer />;
     }
@@ -51,7 +57,9 @@ const App: React.FC = () => {
           <div className="flex w-full sm:w-auto space-x-2 bg-[#2D2D2D] p-1.5 rounded-full border border-white/10">
             <NavButton feature="explorer" label="Career Explorer" icon={<TelescopeIcon />} />
             <NavButton feature="analyzer" label="Job Analyzer" icon={<BriefcaseIcon />} />
+            <NavButton feature="studio" label="Resume Studio" icon={<DocumentIcon />} />
             <NavButton feature="interview" label="Interview Prep" icon={<ChatBubbleIcon />} />
+            <NavButton feature="strategist" label="Salary Strategist" icon={<DollarIcon />} />
           </div>
         </nav>
 

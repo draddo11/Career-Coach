@@ -5,23 +5,11 @@ import Card from './common/Card';
 import Loader from './common/Loader';
 import { createPcmBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { MicrophoneIcon, StopIcon, SettingsIcon } from './common/Icons';
-import type { InterviewFeedback, TranscriptMessage, AnswerBreakdown, SuggestedImprovement } from '../types';
+import type { InterviewFeedback, TranscriptMessage } from '../types';
+import MarkdownRenderer from './common/MarkdownRenderer';
+import JdInput from './common/JdInput';
 
 type InterviewStyle = 'friendly' | 'formal' | 'stress';
-
-// A simple component to render markdown-like bullet points
-const MarkdownRenderer = ({ content }: { content: string }) => {
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    return (
-        <ul className="list-disc list-inside space-y-2 text-slate-300 pl-2">
-            {lines.map((line, index) => {
-                const text = line.replace(/^\s*[-*]\s*/, '');
-                return <li key={index} className="leading-relaxed">{text}</li>;
-            })}
-        </ul>
-    );
-};
-
 
 const InterviewPrep: React.FC = () => {
     const [jdText, setJdText] = useState('');
@@ -76,6 +64,7 @@ const InterviewPrep: React.FC = () => {
         checkMicPermission();
     }, []);
     
+
     const stopInterview = useCallback(async () => {
         setIsInterviewing(false);
         if (sessionPromiseRef.current) {
@@ -289,13 +278,8 @@ const InterviewPrep: React.FC = () => {
                 <p className="text-slate-400 mb-6">Practice your interview skills with an AI interviewer tailored to a specific job. Speak naturally and get a full performance report afterward.</p>
                 {!isInterviewing && (
                     <div className="space-y-4">
-                        <textarea
-                            value={jdText}
-                            onChange={(e) => setJdText(e.target.value)}
-                            placeholder="Paste the job description here to start..."
-                            className="w-full h-32 p-4 bg-[#1F1F1F] border border-white/10 rounded-xl focus:ring-2 focus:ring-[#A8C7FA] focus:outline-none transition-all resize-none"
-                            rows={6}
-                        />
+                        <JdInput value={jdText} onChange={setJdText} />
+                        
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
                             <h3 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2"><SettingsIcon/> Interview Customization</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
