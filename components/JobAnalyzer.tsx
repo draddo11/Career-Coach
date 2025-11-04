@@ -81,11 +81,11 @@ const JobAnalyzer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
           <div className="flex flex-col gap-2">
             <h3 className="text-lg font-semibold text-slate-300 text-center">Your Resume</h3>
-            <ResumeInput value={resumeText} onChange={setResumeText} disabled={isLoading} />
+            <ResumeInput value={resumeText} onChange={setResumeText} disabled={isLoading} className="flex-grow" />
           </div>
           <div className="flex flex-col gap-2">
             <h3 className="text-lg font-semibold text-slate-300 text-center">Job Description</h3>
-            <JdInput value={jdText} onChange={setJdText} disabled={isLoading} />
+            <JdInput value={jdText} onChange={setJdText} disabled={isLoading} className="flex-grow" />
           </div>
         </div>
         <button

@@ -6,9 +6,10 @@ interface JdInputProps {
     value: string;
     onChange: (value: string) => void;
     disabled?: boolean;
+    className?: string;
 }
 
-const JdInput: React.FC<JdInputProps> = ({ value, onChange, disabled }) => {
+const JdInput: React.FC<JdInputProps> = ({ value, onChange, disabled, className = '' }) => {
     const [jobUrl, setJobUrl] = useState('');
     const [isFetching, setIsFetching] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ const JdInput: React.FC<JdInputProps> = ({ value, onChange, disabled }) => {
     const isDisabled = disabled || isFetching;
 
     return (
-        <div className="flex flex-col gap-2 h-full">
+        <div className={`flex flex-col gap-2 ${className}`}>
             <div className="flex items-center gap-2">
                 <input
                     type="url"

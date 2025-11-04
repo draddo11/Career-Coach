@@ -5,9 +5,10 @@ interface ResumeInputProps {
     value: string;
     onChange: (value: string) => void;
     disabled?: boolean;
+    className?: string;
 }
 
-const ResumeInput: React.FC<ResumeInputProps> = ({ value, onChange, disabled }) => {
+const ResumeInput: React.FC<ResumeInputProps> = ({ value, onChange, disabled, className = '' }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState<string | null>(null);
     const [isParsing, setIsParsing] = useState(false);
@@ -63,7 +64,7 @@ const ResumeInput: React.FC<ResumeInputProps> = ({ value, onChange, disabled }) 
     }, [onChange, disabled]);
 
     return (
-        <div className="flex flex-col gap-4 h-full">
+        <div className={`flex flex-col gap-4 ${className}`}>
             <div 
                 className={`relative border-2 border-dashed border-white/20 rounded-xl p-6 text-center transition-all duration-300 bg-[#2D2D2D]/40 ${isDragging ? 'border-white/40 bg-white/10' : ''}`}
                 onDragOver={handleDragOver}
