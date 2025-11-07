@@ -1,5 +1,5 @@
 {
-  "name": "ai-career-copilot",
+  "name": "ai-career-copilot-cloudrun",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,8 +11,13 @@
   "dependencies": {
     "react-dom": "^19.2.0",
     "react": "^19.2.0",
-    "@google/genai": "^1.27.0",
-    "docx": "^9.5.1"
+    "docx": "^9.5.1",
+    "process": "^0.11.10",
+    "@google/genai": "^1.29.0",
+    "express": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "firebase-admin": "^13.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

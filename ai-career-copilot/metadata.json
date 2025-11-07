@@ -1,0 +1,8 @@
+
+{
+  "name": "AI Career Copilot CloudRun",
+  "description": "An AI-powered tool to help you explore career paths, analyze job descriptions, and practice for interviews. It features resume analysis, a job match scorer, a cover letter generator, and a real-time voice-based mock interview simulator.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
