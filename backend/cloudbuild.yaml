@@ -1,10 +1,14 @@
 steps:
+# 1. Build the container image
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/$PROJECT_ID/ai-career-copilot-backend:latest', '.']
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest', '.']
+  # remove dir: 'backend' if running from inside backend/
 
+# 2. Push the container image
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'gcr.io/$PROJECT_ID/ai-career-copilot-backend:latest']
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest']
 
+# 3. Deploy to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'gcloud'
   args:
@@ -12,7 +16,7 @@ steps:
     - 'deploy'
     - 'ai-career-copilot-backend'
     - '--image'
-    - 'gcr.io/$PROJECT_ID/ai-career-copilot-backend:latest'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest'
     - '--region'
     - 'us-central1'
     - '--platform'
@@ -22,4 +26,4 @@ steps:
     - '--set-env-vars=GCLOUD_PROJECT=$PROJECT_ID'
 
 images:
-- 'gcr.io/$PROJECT_ID/ai-career-copilot-backend:latest'
+- 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest'
