@@ -2,7 +2,6 @@ steps:
 # 1. Build the container image
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'us-central1-docker.pkg.dev/resumehacathon/ai-career-copilot/backend:latest', '.']
-  dir: 'backend'
 
 # 2. Push the container image to Artifact Registry
 - name: 'gcr.io/cloud-builders/docker'
@@ -14,7 +13,7 @@ steps:
   args:
     - 'run'
     - 'deploy'
-    - 'ai-career-copilot-backend'          # Name of your Cloud Run service
+    - 'ai-career-copilot-backend'
     - '--image'
     - 'us-central1-docker.pkg.dev/resumehacathon/ai-career-copilot/backend:latest'
     - '--region'
