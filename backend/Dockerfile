@@ -13,11 +13,11 @@ RUN npm install --production
 # Copy all source files
 COPY . .
 
-# Build TypeScript (if you have tsconfig)
+# Build TypeScript if you have tsconfig
 RUN npm run build
 
-# Expose the port your app uses
+# Expose port your app listens on
 EXPOSE 8080
 
 # Run the app
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/index.js"]  # Change to your main compiled file
