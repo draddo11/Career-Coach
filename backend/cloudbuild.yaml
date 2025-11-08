@@ -1,29 +1,29 @@
 steps:
 # 1. Build the container image
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest', '.']
-  # remove dir: 'backend' if running from inside backend/
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/resumehacathon/ai-career-copilot/backend:latest', '.']
+  dir: 'backend'
 
-# 2. Push the container image
+# 2. Push the container image to Artifact Registry
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest']
+  args: ['push', 'us-central1-docker.pkg.dev/resumehacathon/ai-career-copilot/backend:latest']
 
-# 3. Deploy to Cloud Run
+# 3. Deploy container image to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'gcloud'
   args:
     - 'run'
     - 'deploy'
-    - 'ai-career-copilot-backend'
+    - 'ai-career-copilot-backend'          # Name of your Cloud Run service
     - '--image'
-    - 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest'
+    - 'us-central1-docker.pkg.dev/resumehacathon/ai-career-copilot/backend:latest'
     - '--region'
     - 'us-central1'
     - '--platform'
     - 'managed'
     - '--allow-unauthenticated'
     - '--set-secrets=API_KEY=API_KEY:latest,SESSION_SECRET=SESSION_SECRET:latest'
-    - '--set-env-vars=GCLOUD_PROJECT=$PROJECT_ID'
+    - '--set-env-vars=GCLOUD_PROJECT=resumehacathon'
 
 images:
-- 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest'
+- 'us-central1-docker.pkg.dev/resumehacathon/ai-career-copilot/backend:latest'
