@@ -2,12 +2,12 @@
 steps:
 # 1. Build the container image
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA', '.']
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$BUILD_ID', '.']
   dir: 'backend'
 
 # 2. Push the container image to Artifact Registry
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA']
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$BUILD_ID']
 
 # 3. Deploy container image to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -17,7 +17,7 @@ steps:
     - 'deploy'
     - 'ai-career-copilot-backend' # Name of your Cloud Run service
     - '--image'
-    - 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$BUILD_ID'
     - '--region'
     - 'us-central1'
     - '--platform'
@@ -28,4 +28,4 @@ steps:
     - '--set-env-vars=GCLOUD_PROJECT=$PROJECT_ID'
 
 images:
-- 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA'
+- 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$BUILD_ID'

@@ -1,31 +1,32 @@
 
 steps:
-# 1. Build the container image
+# 1. Build the container image using the Dockerfile in the 'backend' directory.
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA', '.']
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest', '.']
   dir: 'backend'
 
-# 2. Push the container image to Artifact Registry
+# 2. Push the container image to Artifact Registry.
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA']
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest']
 
-# 3. Deploy container image to Cloud Run
+# 3. Deploy the container image to Cloud Run.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'gcloud'
   args:
     - 'run'
     - 'deploy'
-    - 'ai-career-copilot-backend' # Name of your Cloud Run service
+    - 'ai-career-copilot-backend' # This is the name of your Cloud Run service.
     - '--image'
-    - 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest'
     - '--region'
     - 'us-central1'
     - '--platform'
     - 'managed'
-    - '--allow-unauthenticated' # Or configure authentication as needed
-    # Pass secrets from Secret Manager to the service
+    - '--allow-unauthenticated' # Allows public access to your service.
+    # Pass secrets from Secret Manager as environment variables to the service.
     - '--set-secrets=API_KEY=API_KEY:latest,SESSION_SECRET=SESSION_SECRET:latest'
     - '--set-env-vars=GCLOUD_PROJECT=$PROJECT_ID'
 
+# This section lists the final image that was built.
 images:
-- 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:$COMMIT_SHA'
+- 'us-central1-docker.pkg.dev/$PROJECT_ID/ai-career-copilot/backend:latest'
