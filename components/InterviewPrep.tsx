@@ -332,25 +332,39 @@ const InterviewPrep: React.FC = () => {
     );
 
     const renderVoiceMode = () => {
-        const getVoiceButton = () => {
-            switch (voiceState) {
-                case 'idle':
-                    return <button onClick={startVoiceInterview} disabled={!jdText.trim()} className="w-full flex items-center justify-center gap-3 bg-green-500 text-white font-bold py-3 px-4 rounded-full hover:bg-green-600 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all"><MicrophoneIcon /> Start Voice Interview</button>
-                case 'listening':
-                    return <button onClick={stopVoiceInterview} className="w-full flex items-center justify-center gap-3 bg-red-500 text-white font-bold py-3 px-4 rounded-full hover:bg-red-600 transition-all"><div className="w-5 h-5 relative"><div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></div><MicrophoneIcon /></div> Listening... (End Interview)</button>
-                case 'speaking':
-                     return <button disabled className="w-full flex items-center justify-center gap-3 bg-blue-500 text-white font-bold py-3 px-4 rounded-full disabled:cursor-not-allowed transition-all"><WaveformIcon /> AI is Speaking...</button>
-                case 'ending':
-                    return <button disabled className="w-full flex items-center justify-center gap-3 bg-slate-600 text-white font-bold py-3 px-4 rounded-full disabled:cursor-not-allowed transition-all"><StopIcon /> Ending Session...</button>
-            }
-        };
+        if (voiceState === 'idle') {
+            return (
+                 <div className="mt-6">
+                    <button onClick={startVoiceInterview} disabled={!jdText.trim() || isConfigDisabled} className="w-full flex items-center justify-center gap-3 bg-green-500 text-white font-bold py-3 px-4 rounded-full hover:bg-green-600 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all"><MicrophoneIcon /> Start Voice Interview</button>
+                 </div>
+            )
+        }
 
+        // Active interview state
+        const getStatusIndicator = () => {
+            switch (voiceState) {
+                case 'listening':
+                    return <div className="flex items-center justify-center gap-3 text-white font-bold"><div className="w-5 h-5 relative"><div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></div><MicrophoneIcon /></div> Listening...</div>
+                case 'speaking':
+                     return <div className="flex items-center justify-center gap-3 text-white font-bold"><WaveformIcon /> AI is Speaking...</div>
+                case 'ending':
+                    return <div className="flex items-center justify-center gap-3 text-white font-bold"><StopIcon /> Ending Session...</div>
+                default:
+                    return null;
+            }
+        }
+        
         return (
-            <div className="mt-6">
-                {getVoiceButton()}
+            <div className="mt-6 flex items-center gap-4">
+                <div className="flex-grow bg-slate-800/50 border border-white/10 rounded-full h-12 flex items-center justify-center">
+                    {getStatusIndicator()}
+                </div>
+                <button onClick={stopVoiceInterview} disabled={voiceState === 'ending'} className="flex items-center justify-center gap-3 bg-red-500 text-white font-bold py-3 px-5 rounded-full hover:bg-red-600 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all shrink-0">
+                    <StopIcon /> End Interview
+                </button>
             </div>
-        );
-    }
+        )
+    };
     
 
     return (
@@ -419,7 +433,11 @@ const InterviewPrep: React.FC = () => {
                         <div ref={transcriptEndRef} />
                     </div>
                     {interviewMode === 'text' && renderTextMode()}
-                    {isTextInterviewing && interviewMode === 'voice' && <div className="mt-4">{renderVoiceMode()}</div> /* Show end button if switched mid-interview */}
+                    {interviewMode === 'voice' && isInterviewActive && (
+                        <div className="mt-4">
+                            {renderVoiceMode()}
+                        </div>
+                    )}
                 </Card>
             )}
 
