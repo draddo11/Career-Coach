@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Modality, type LiveServerMessage } from '@google/genai';
 import { generateInterviewTurn, generateInterviewReport } from '../services/appService';
@@ -132,22 +131,18 @@ const InterviewPrep: React.FC = () => {
     const cleanupAudio = useCallback(() => {
         // Stop all playing audio sources
         outputSourcesRef.current.forEach(source => {
-            source.stop();
+            try { source.stop(); } catch(e) { console.warn("Failed to stop audio source", e)}
         });
         outputSourcesRef.current.clear();
 
-        // Disconnect and close audio contexts
+        // Disconnect audio nodes
         scriptProcessorRef.current?.disconnect();
         mediaStreamSourceRef.current?.disconnect();
-        inputAudioContextRef.current?.close().catch(console.error);
-        outputAudioContextRef.current?.close().catch(console.error);
-
+        
         // Stop microphone track
         mediaStreamRef.current?.getTracks().forEach(track => track.stop());
         
-        // Clear refs
-        inputAudioContextRef.current = null;
-        outputAudioContextRef.current = null;
+        // Clear refs for nodes and stream, but not for contexts
         scriptProcessorRef.current = null;
         mediaStreamSourceRef.current = null;
         mediaStreamRef.current = null;
@@ -163,11 +158,16 @@ const InterviewPrep: React.FC = () => {
 
         try {
             const ai = getAiClient();
+
+            if (!inputAudioContextRef.current) {
+                inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: INPUT_SAMPLE_RATE });
+            }
+            if (!outputAudioContextRef.current) {
+                outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStreamRef.current = stream;
-
-            inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: INPUT_SAMPLE_RATE });
-            outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
 
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -261,7 +261,7 @@ const InterviewPrep: React.FC = () => {
             });
             // Send initial message with JD
             const session = await sessionPromiseRef.current;
-            session.sendText(`Here is the job description I'm interviewing for:\n\n${jdText}`);
+            session.sendRealtimeInput({ text: `Here is the job description I'm interviewing for:\n\n${jdText}` });
 
         } catch (err) {
             console.error(err);
@@ -290,8 +290,11 @@ const InterviewPrep: React.FC = () => {
         return () => {
             if (sessionPromiseRef.current) {
                 sessionPromiseRef.current.then(session => session?.close()).catch(console.error);
-                cleanupAudio();
             }
+            cleanupAudio();
+            // This is the only place audio contexts are fully closed
+            inputAudioContextRef.current?.close().catch(console.error);
+            outputAudioContextRef.current?.close().catch(console.error);
         };
     }, [cleanupAudio]);
     
